@@ -6,34 +6,41 @@
 
 void signal_routine(int signal)
 {
-	sigset_t old_mask;
+	if (signal == 27 || signal == SIGPROF)
+	{
+		sigset_t sigset;
+		sigset_t old_set;
+		sigemptyset(&sigset);
+		sigaddset(&sigset, SIGINT);
+		sigprocmask(SIG_BLOCK, &sigset, &old_set);
+		// Hier ist SIGINT gesperrt
 
-	// Lock signals
-	sigfillset(&old_mask);
-	sigprocmask(SIG_BLOCK, &old_mask, NULL);
+		schedule();
 
-	// Perform tasks here
-	// ...
-	sigprocmask(SIG_UNBLOCK, &old_mask, NULL);
+		// Sperre aufheben :
+		sigprocmask(SIG_SETMASK, &old_set, NULL);
+	}
 }
 
 int main(void)
 {
-	struct itimerval timer;
-	struct sigaction sigact;
 
 	// Set up the signal handler
+	struct sigaction sigact;
 	sigact.sa_handler = signal_routine;
-	sigemptyset(&sa.sa_mask);
+	sigemptyset(&sigact.sa_mask);
 	sigact.sa_flags = 0;
 	sigaction(SIGPROF, &sigact, NULL);
+
 	// Set up the timer
+	struct itimerval timer;
 	timer.it_value.tv_sec = 0;
 	timer.it_value.tv_usec = 500000; // 500000 microseconds = 0.5 seconds
 	timer.it_interval.tv_sec = 0;
 	timer.it_interval.tv_usec = 500000;
 
-	setitimer(ITIMER_VIRTUAL, &timer, NULL);
+	// delivers SIGPROF at the end
+	setitimer(ITIMER_PROF, &timer, NULL);
 
 	if (create_process("init", init, NULL) == -1)
 	{
